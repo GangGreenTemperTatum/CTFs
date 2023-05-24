@@ -823,10 +823,116 @@ Cache-Control: no-cache, no-store
 
 <br>
 
-## **Subdomain takeover [Example 3]** `netlify`
+## **Subdomain takeover [Example 3]** `Netlify`
 
--
+- The output from `dig` has indicated a `C`-Name record which would be configured such as (within the DNS provider's NS's):
+  - **Host**: `takemynetlify`
+  - **Value**: `takemynetlify.netlify.app.`
 
+```
+~ % dig takemynetlify.takemeoverforfuns.org cname
+; <<>> DiG 9.10.6 <<>> takemynetlify.takemeoverforfuns.org cname
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 7055
+;; flags: qr rd ra; QUERY: 1, ANSWER: 1, AUTHORITY: 0, ADDITIONAL: 1
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 1232
+;; QUESTION SECTION:
+;takemynetlify.takemeoverforfuns.org. IN	CNAME
+
+;; ANSWER SECTION:
+takemynetlify.takemeoverforfuns.org. 1542 IN CNAME takemynetlify.netlify.app.
+```
+
+- The site is not currently alive within Netlify's CDN, is it dangling?
+
+```
+~ % curlheaders takemynetlify.takemeoverforfuns.org.
+HTTP/1.1 404 Not Found
+Cache-Control: private, max-age=0
+Content-Type: text/plain; charset=utf-8
+Server: Netlify
+X-Nf-Request-Id: 01H12WCXMMSX3YK1XB7E0VMHX8
+Date: Mon, 22 May 2023 23:23:34 GMT
+Content-Length: 50
+
+~ % curlredirect takemynetlify.takemeoverforfuns.org
+Not Found - Request ID: 01H12WD4S2V16DQAX89MMK0RE0%
+```
+
+```
+~ % httpx -u takemynetlify.takemeoverforfuns.org -p 80,443,8080 -status-code -title -v
+
+    __    __  __       _  __
+   / /_  / /_/ /_____ | |/ /
+  / __ \/ __/ __/ __ \|   /
+ / / / / /_/ /_/ /_/ /   |
+/_/ /_/\__/\__/ .___/_/|_|
+             /_/
+
+		projectdiscovery.io
+
+[INF] Current httpx version v1.3.1 (latest)
+https://takemynetlify.takemeoverforfuns.org [404] []
+http://takemynetlify.takemeoverforfuns.org [404] []
+[DBG] Failed 'http://takemynetlify.takemeoverforfuns.org:8080': GET http://takemynetlify.takemeoverforfuns.org:8080 giving up after 1 attempts: Get "http://takemynetlify.takemeoverforfuns.org:8080": could not connect to any port found for host (Client.Timeout exceeded while awaiting headers)
+```
+
+![Screenshot 2023-05-22 at 4 26 15 PM](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/e181e823-027c-4682-8af0-8c9d0450bb0e)
+
+![Screenshot 2023-05-22 at 4 26 59 PM](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/4cd7da76-e7d7-4941-a52a-fd123e55f436)
+
+- At this point, my reaction would be to run `nuclei` with a takeover template to verify if this is exploitable (`% nuclei -u takemynetlify.takemeoverforfuns.org -v -ts -sa -uc -t ~/nuclei-templates/takeovers`).
+  - However, for the purpose of this demo, let's roll!
+
+1) Create an account on [`Netlify`](https://app.netlify.com/)
+2) Connect your GitHub account via OAUTH 2.0 for workflow identity federation authentication and choose a custom template, or upload your own project from an existing repo
+   1) This project will be your PoC in this case, similar to Heroku/GitHub example 2
+3) Add a domain under `Domains` > `Domain Management`
+4) Enter the subdomain `takemynetlify.takemeoverforfuns.org`
+5) Click `Add Subdomain`
+6) Await the DNS verification to be completed by Netlify CDN servers which are checking the `C`-Name record is present within DNS and should now display <span style="color:green">green</span>
+   1) Ultimately, it's checking the `C`-Name record is present within public DNS which points `takemynetlify.takemeoverforfuns.org` -> (`CNAME`) -> `takemynetlify.netlify.app.` which we found in the earlier recon stage
+
+- The original subdomain eligible for takeover (I.E, the dangling domain `takemynetlify.takemeoverforfuns.org`) now redirects to our Netlify PoC `https://takemynetlify.takemeoverforfuns.org/` **which we control!** (See mine [here](https://github.com/GangGreenTemperTatum/nextjs-blog-theme))
+
+```
+bin % curlheaders takemynetlify.takemeoverforfuns.org
+HTTP/1.1 301 Moved Permanently
+Content-Type: text/plain; charset=utf-8
+Location: https://takemynetlify.takemeoverforfuns.org/
+Server: Netlify
+X-Nf-Request-Id: 01H12XBCS8XMWJ5WVFXBSXWC88
+Date: Mon, 22 May 2023 23:40:13 GMT
+Content-Length: 59
+
+HTTP/2 200
+accept-ranges: bytes
+age: 0
+cache-control: public, max-age=0, must-revalidate
+content-type: text/html; charset=UTF-8
+date: Mon, 22 May 2023 23:40:13 GMT
+etag: "9167322b6d31059924437fd23009607f-ssl"
+server: Netlify
+strict-transport-security: max-age=31536000
+vary: X-Bb-Conditions
+x-nf-request-id: 01H12XBD0E7YNPZT4889YZ571D
+content-length: 14098
+```
+
+![Screenshot 2023-05-22 at 4 38 40 PM](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/e1b01693-8b78-4c0a-9f27-f516c8b1f647)
+
+![Screenshot 2023-05-22 at 4 42 02 PM](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/750520ae-08a3-478d-8c87-bab6852ab750)
+
+- **For my walkthrough and simplicity sake**, I deployed a random `next.js` blog template to prove subdomain takeover
+- However, in the real world:
+  - Keep PoC's simple and limit the bells and whistles
+  - Remove any sophisticated web design or anything that shows intentionally bad reputational image to the legitimate domain owner/company
+
+7. Test hitting the DNS record now and you should see your PoC displayed following the redirect! (Hurrah!) 😹
+
+![Screen Recording 2023-05-23 at 8 03 03 PM](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/8643e347-093f-4bd4-a9c0-d93626d046c0)
 
 <br>
 
