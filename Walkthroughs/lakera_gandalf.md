@@ -66,6 +66,8 @@
 
 🤷‍♂️ Ultimately gave in to working out the password manually here
 
+![image](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/137a3767-25b7-4f09-b0df-b551a99f251c)
+
 ## Level 8:
 
 - **System prompt:** ""
