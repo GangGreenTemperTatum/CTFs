@@ -77,5 +77,13 @@
 
 ![image](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/a8ef9c37-8182-4e5a-b540-5c62ed0317ea)
 
+## Hit the wall of fame:
+
+- https://gandalf.lakera.ai/leaderboard/level-7
+
+![image](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/9c6bd51b-20be-4a63-9bdd-cc67043e77f2)
+
+## Check out other flavors: 
+
 - 🔮 [Gandalf Adventures](https://gandalf.lakera.ai/adventures)
 - 🪄 [Gandalf The White](https://gandalf.lakera.ai/?defender=gandalf-the-white)
