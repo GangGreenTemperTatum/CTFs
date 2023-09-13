@@ -291,7 +291,7 @@ Content-Length: 8307609
 
 I am fairly certain this is the flag for this challenge.
 
-## Rate Limiting
+## Rate Limiting - TODO
 
 ### Challenge 6 - Perform a layer 7 DoS using ‘contact mechanic’ feature
 
@@ -305,7 +305,7 @@ The `200` OK response is received regardless of whether the `X-Forwarded-For` he
 
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2022.png)
 
-**TODO:**
+——— **TODO: ———**
 
 ## BFLA - Flag 😈
 
@@ -464,23 +464,95 @@ Here, we can see a successful `PUT` request has updated the resouce:
 
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2048.png)
 
-## SSRF
+## SSRF - Flag 😈
 
 ### Challenge 11 - Make crAPI send an HTTP call to "[www.google.com](https://github.com/OWASP/crAPI/blob/develop/docs/www.google.com)" and return the HTTP response.
 
-## NoSQL Injection
+From my experience, locating SSRF attack vectors can be difficult unless it’s obvious that the application's normal traffic involves request parameters containing full URLs. Trying to identify other scenario’s such as Partial URLs in requests, URLs within data formats or SSRF via the Referer header is more involved.
+
+I first checked my Target Scope in Burp Suite for `3xx` (open-redirects) but left me empty handed:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2049.png)
+
+Navigating through the UI, I decided to check out the `contact` feature and can see the API is making an internal request to the web app under the `mechanic_api` key:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2050.png)
+
+This flag is to use `google.com`, but for sake of my walkthrough I want to use my Burp Suite Collaborator URL instead: (this is working and accepted)
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2051.png)
+
+Verification from the collaborator:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2052.png)
+
+## NoSQL Injection - Flag 😈
 
 ### Challenge 12 - Find a way to get free coupons without knowing the coupon code.
 
-## SQL Injection
+[NoSQL](https://www.imperva.com/learn/application-security/nosql-injection/) (Not Only SQL) refers to database systems that use more flexible data formats and do not support Structured Query Language (SQL). **They typically store and manage data as key-value pairs, documents, or data graphs.** ← Here is our clue
+
+[NoSQL](https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/05.6-Testing_for_NoSQL_Injection) database calls are written in the application’s programming language, a custom API call, or formatted according to a common convention (such as `XML`, `JSON`, `LINQ`, etc).
+
+crAPI has a coupon validation endpoint at `POST /community/api/v2/coupon/validate-coupon HTTP/1.1`. Let’s edit the current request to a QueryString to test for NoSQL Injection using the NoSQLi bAPP extension:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2053.png)
+
+Our received response here shows that this endpoint is potentially vulnerable to NoSQLi:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2054.png)
+
+Performing some testing with noSQLi payloads, I verified this looks to be a backend MongoDB. As such, I amended my request to:
+
+```markdown
+{"coupon_code":{
+"$ne":"ads_coupon_codeeezzzz"}
+}
+```
+
+The `$ne` is a MongoDB Comparison Query Operator. The query must be sent within enclosed `json` and key/value pair’s for what data is being queried (in this case, the `coupon_code` is being verified - Example: **`({'team': {$ne : "Mavs"}})`.** 
+
+**A**s such this query is sent and interpreted as… “verify the coupon code is not `ads_coupon_codeeezzzz` (which we know is unsuccessful from the `500` error and as such an implicit other available coupon) which yields successful:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2055.png)
+
+To be sure, I sent a request for the actual coupon legitimate value:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2056.png)
+
+## SQL Injection - TODO
 
 ### Challenge 13 - Find a way to redeem a coupon that you have already claimed by modifying the database
 
-## Unauthenticated Access
+If we try to again redeem the coupon code which we originally validated, we get an error:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2057.png)
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2058.png)
+
+Now, let’s try performing some iSQL attacks against this `coupon_code` value, our aim is to trick the DB into thinking that redeemed coupon `TRAC075` has not been redeemed.
+
+——— **TODO: ———**
+
+## Unauthenticated Access - Flag 😈
 
 ### Challenge 14 - Find an endpoint that does not perform authentication checks for a user.
 
-## JWT Vulnerabilities
+AKA Broken Authentication, my first thought was to hunt for endpoints which may leak sensitive information such as PII. Therefore, from my experience with crAPI’s API, I started some hAPI path emulating user activity and started to observe the results:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2059.png)
+
+As a path of interest, this was interestingly and the first API endpoint that I tested, I sent to Burp Repeater and stripped the JWT token to remove any kind of bearer authentication. This was successful and the API endpoint is being leaked without a requirement for token authentication:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2060.png)
+
+This is also true only for the `GET` method as you can see when I tried to send a manipulated HTTP `PUT` request, emulating an order takeover:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2061.png)
+
+This vulnerability is not limited to one endpoint, this is just one example.
+
+## JWT Vulnerabilities - TODO
 
 ### Challenge 15 - Find a way to forge valid JWT Tokens
 
@@ -490,7 +562,7 @@ Instantly here, I pivot to using the good old JWT Tool
 jwt_tool master % python3 jwt_tool.py eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJoYWNrZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTY5NDQwMTEzMywiZXhwIjoxNjk1MDA1OTMzfQ.FRvnO_rOsqJExjLzQ7srBiOp3nHsYgqMf_dXZy3a7NMRY-46COnH7JOX9xbKmosFfQUjkPhzrfTqkY03ZuBGYSW3fADkQ_1TmaRyQJx4Yn9HOqvSpiF67HS0Ddn9z88z5ObWY8jqxiDYLReFwLZJ1OFUqaYGCjWyI17H-a5XI4JiCeHjGVwMHOIibQ_0AHqnpn9kjMmk87bYpIYE0DjLejtemrxe0CW7iJsPQ8Fq2syWaIjx-H3skPEjpGJ-JnVDf5OIiBFqXa8xXySp9oK1ljTYh-ob3ZgE4ehyAG4KwrNA3o4VHKJ99tgkqKhPP9EhQATeA9wBXygyzHiGUBfppA
 ```
 
-Looking at my output, the “JOT” token associates a `role` with the bearer token (currently `user`):
+Looking at my output, the “JOT” token associates a `role` with the bearer token (current value = “`user`”):
 
 ```markdown
 Token payload values:
@@ -501,7 +573,7 @@ Token payload values:
 
 ```
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2049.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2062.png)
 
 Using the `-T` parameter, let’s tamper with the values:
 
@@ -509,7 +581,7 @@ Using the `-T` parameter, let’s tamper with the values:
 jwt_tool master % python3 jwt_tool.py -T eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJoYWNrZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTY5NDQwMTEzMywiZXhwIjoxNjk1MDA1OTMzfQ.FRvnO_rOsqJExjLzQ7srBiOp3nHsYgqMf_dXZy3a7NMRY-46COnH7JOX9xbKmosFfQUjkPhzrfTqkY03ZuBGYSW3fADkQ_1TmaRyQJx4Yn9HOqvSpiF67HS0Ddn9z88z5ObWY8jqxiDYLReFwLZJ1OFUqaYGCjWyI17H-a5XI4JiCeHjGVwMHOIibQ_0AHqnpn9kjMmk87bYpIYE0DjLejtemrxe0CW7iJsPQ8Fq2syWaIjx-H3skPEjpGJ-JnVDf5OIiBFqXa8xXySp9oK1ljTYh-ob3ZgE4ehyAG4KwrNA3o4VHKJ99tgkqKhPP9EhQATeA9wBXygyzHiGUBfppA
 ```
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2050.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2063.png)
 
 My new JWT token is:
 
@@ -517,33 +589,81 @@ My new JWT token is:
 eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJoYWNrZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE2OTQ0MDExMzMsImV4cCI6MTY5NTAwNTkzM30.FRvnO_rOsqJExjLzQ7srBiOp3nHsYgqMf_dXZy3a7NMRY-46COnH7JOX9xbKmosFfQUjkPhzrfTqkY03ZuBGYSW3fADkQ_1TmaRyQJx4Yn9HOqvSpiF67HS0Ddn9z88z5ObWY8jqxiDYLReFwLZJ1OFUqaYGCjWyI17H-a5XI4JiCeHjGVwMHOIibQ_0AHqnpn9kjMmk87bYpIYE0DjLejtemrxe0CW7iJsPQ8Fq2syWaIjx-H3skPEjpGJ-JnVDf5OIiBFqXa8xXySp9oK1ljTYh-ob3ZgE4ehyAG4KwrNA3o4VHKJ99tgkqKhPP9EhQATeA9wBXygyzHiGUBfppA
 ```
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2051.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2064.png)
 
 Now we want to try and find an API endpoint which returns the “`role: <user`" etc. Let’s try the dashboard homepage `GET /identity/api/v2/user/dashboard HTTP/1.1`:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2052.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2065.png)
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2053.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2066.png)
 
 No 🎲, maybe we need to look at hitting another `admin`-esq endpoint. 
 
-## << 2 secret challenges >>
-
-There are two more secret challenges in crAPI, that are pretty complex, and for now we don’t share details about them, except the fact they are really cool.
-
-Interesting, our crawl audit of cRAPI has shown API endpoint `GET /.well-known/jwks.json HTTP/1.1` which exposes a key
+Interesting, our crawl audit of cRAPI has shown API endpoint `GET /.well-known/jwks.json HTTP/1.1` which exposes a `jwks` file:
 
 ```markdown
 { "keys": [ { "kty": "RSA", "e": "AQAB", "use": "sig", "kid": "MKMZkDenUfuDF2byYowDj7tW5Ox6XG4Y1THTEGScRg8", "alg": "RS256", "n": "sZKrGYja9S7BkO-waOcupoGY6BQjixJkg1Uitt278NbiCSnBRw5_cmfuWFFFPgRxabBZBJwJAujnQrlgTLXnRRItM9SRO884cEXn-s4Uc8qwk6pev63qb8no6aCVY0dFpthEGtOP-3KIJ2kx2i5HNzm8d7fG3ZswZrttDVbSSTy8UjPTOr4xVw1Yyh_GzGK9i_RYBWHftDsVfKrHcgGn1F_T6W0cgcnh4KFmbyOQ7dUy8Uc6Gu8JHeHJVt2vGcn50EDtUy2YN-UnZPjCSC7vYOfd5teUR_Bf4jg8GN6UnLbr_Et8HUnz9RFBLkPIf0NiY6iRjp9ooSDkml2OGql3ww" } ] }
 ```
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2054.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2067.png)
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2055.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2068.png)
 
-Again, the JWT Tool features a handy parameter:
+"The JSON Web Key Set (JWKS) is a set of keys containing the public keys used to verify any JSON Web Token (JWT) issued by the Authorization Server and signed using the RS256 **[signing algorithm](https://auth0.com/docs/get-started/applications/signing-algorithms)**.”
+
+Again, the JWT Tool features a handy flag we can use here:
 
 ```markdown
 -jw JWKSFILE, --jwksfile JWKSFILE
                         JSON Web Key Store for Asymmetric crypto
 ```
+
+First, let’s save the `jwksfile` locally and interpret with `jq`:
+
+```markdown
+jwt_tool master % cat ./crapi-jwksfile.txt
+{ "keys": [ { "kty": "RSA", "e": "AQAB", "use": "sig", "kid": "MKMZkDenUfuDF2byYowDj7tW5Ox6XG4Y1THTEGScRg8", "alg": "RS256", "n": "sZKrGYja9S7BkO-waOcupoGY6BQjixJkg1Uitt278NbiCSnBRw5_cmfuWFFFPgRxabBZBJwJAujnQrlgTLXnRRItM9SRO884cEXn-s4Uc8qwk6pev63qb8no6aCVY0dFpthEGtOP-3KIJ2kx2i5HNzm8d7fG3ZswZrttDVbSSTy8UjPTOr4xVw1Yyh_GzGK9i_RYBWHftDsVfKrHcgGn1F_T6W0cgcnh4KFmbyOQ7dUy8Uc6Gu8JHeHJVt2vGcn50EDtUy2YN-UnZPjCSC7vYOfd5teUR_Bf4jg8GN6UnLbr_Et8HUnz9RFBLkPIf0NiY6iRjp9ooSDkml2OGql3ww" } ] }
+jwt_tool master % cat ./crapi-jwksfile.txt | jq >> ./crapi-jwksfile.txt
+jwt_tool master % cat ./crapi-jwksfile.txt
+{ "keys": [ { "kty": "RSA", "e": "AQAB", "use": "sig", "kid": "MKMZkDenUfuDF2byYowDj7tW5Ox6XG4Y1THTEGScRg8", "alg": "RS256", "n": "sZKrGYja9S7BkO-waOcupoGY6BQjixJkg1Uitt278NbiCSnBRw5_cmfuWFFFPgRxabBZBJwJAujnQrlgTLXnRRItM9SRO884cEXn-s4Uc8qwk6pev63qb8no6aCVY0dFpthEGtOP-3KIJ2kx2i5HNzm8d7fG3ZswZrttDVbSSTy8UjPTOr4xVw1Yyh_GzGK9i_RYBWHftDsVfKrHcgGn1F_T6W0cgcnh4KFmbyOQ7dUy8Uc6Gu8JHeHJVt2vGcn50EDtUy2YN-UnZPjCSC7vYOfd5teUR_Bf4jg8GN6UnLbr_Et8HUnz9RFBLkPIf0NiY6iRjp9ooSDkml2OGql3ww" } ] }
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "e": "AQAB",
+      "use": "sig",
+      "kid": "MKMZkDenUfuDF2byYowDj7tW5Ox6XG4Y1THTEGScRg8",
+      "alg": "RS256",
+      "n": "sZKrGYja9S7BkO-waOcupoGY6BQjixJkg1Uitt278NbiCSnBRw5_cmfuWFFFPgRxabBZBJwJAujnQrlgTLXnRRItM9SRO884cEXn-s4Uc8qwk6pev63qb8no6aCVY0dFpthEGtOP-3KIJ2kx2i5HNzm8d7fG3ZswZrttDVbSSTy8UjPTOr4xVw1Yyh_GzGK9i_RYBWHftDsVfKrHcgGn1F_T6W0cgcnh4KFmbyOQ7dUy8Uc6Gu8JHeHJVt2vGcn50EDtUy2YN-UnZPjCSC7vYOfd5teUR_Bf4jg8GN6UnLbr_Et8HUnz9RFBLkPIf0NiY6iRjp9ooSDkml2OGql3ww"
+    }
+  ]
+}
+```
+
+——— **TODO———**
+
+## << 2 secret challenges >> - 50% TODO
+
+1. `POST` request to `/workshop/api/shop/products HTTP/1.1` for arbitrary products:
+
+One strange thing I noticed during hAPI path from the `HTTP Headers` bAPP extension is that `/workshop/api/shop/products HTTP/1.1` endpoint allows the `POST` method. Let’s try abuse this!
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2069.png)
+
+This seems to show that the application is allowing input for addition of products but requires a slightly different data format:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2070.png)
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2071.png)
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2072.png)
+
+We could cause a bit more havoc here for fun with the Intruder:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2073.png)
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2074.png)
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2075.png)
+
+1. ——— **TODO———**
