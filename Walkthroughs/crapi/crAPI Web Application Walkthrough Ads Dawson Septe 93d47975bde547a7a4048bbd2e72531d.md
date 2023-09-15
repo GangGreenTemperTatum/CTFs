@@ -291,7 +291,7 @@ Content-Length: 8307609
 
 I am fairly certain this is the flag for this challenge.
 
-## Rate Limiting - TODO
+## Rate Limiting - Flag 😈
 
 ### Challenge 6 - Perform a layer 7 DoS using ‘contact mechanic’ feature
 
@@ -305,7 +305,16 @@ The `200` OK response is received regardless of whether the `X-Forwarded-For` he
 
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2022.png)
 
-——— **TODO: ———**
+However, looking further I found the `json` blob key/value pairs were exploitable, leading to the DoS attack and flag:
+
+```markdown
+"repeat_request_if_failed":true,
+"number_of_repeats":1000000000000000000000000000000000000000000
+```
+
+This makes sense, given that editing the HTTP (application-level AKA layer 7) payload is exploited to cause the DoS attack.
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2023.png)
 
 ## BFLA - Flag 😈
 
@@ -313,11 +322,11 @@ The `200` OK response is received regardless of whether the `X-Forwarded-For` he
 
 Looking at where we see our own video’s is REST API endpoint `GET /identity/api/v2/user/dashboard HTTP/1.1` which reveals a potential location clue:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2023.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2024.png)
 
 We know we are looking for a `PUT` (update) or `POST` (create) request to `DELETE` (CRUD) a resource on the webserver. Pivoting to the Active Crawl (authenticated) I performed of the application and ordering by name shows some other potential pivots:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2024.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2025.png)
 
 The JWT tokens in each payload are a bearer associated to my user account, but the `profileVideo` values are all unique (I.E different video paths for different users)
 
@@ -331,27 +340,27 @@ Token payload values:
 
 The `profileVideo` values are base64-encoded values, which equate to the value inside the `WebKitFormBoundary` section:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2025.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2026.png)
 
 Looking back on my old request, I can confirm my user `profileVideo` key/value is `BdajbPcE7i`: (so I want to delete a different one)
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2026.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2027.png)
 
 Attempting to send a `PUT` request to this API endpoint shows only `POST` requests are permitted:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2027.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2028.png)
 
 I found a clue when looking at the API endpoint `/identity/api/v2/user/videos HTTP/1.1` from the crawl shows a `DELETE` request method is accepted:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2028.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2029.png)
 
 I have an example name and ID from the prior crawl:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2029.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2030.png)
 
 Therefore, change my Repeater request to:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2030.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2031.png)
 
 Which gives away a huge clue:
 
@@ -361,7 +370,7 @@ Which gives away a huge clue:
 
 I then tried to use an alternate approach by replacing `user` for `admin` within the API endpoint request from `DELETE /identity/api/v2/user/videos/33 HTTP/1.1` to `DELETE /identity/api/v2/admin/videos/33 HTTP/1.1` which is successful!
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2031.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2032.png)
 
 Admitting here that I am being lazy, but alternatively my go-to would be to use `SecLists` from Daniel M and `Feroxbuster` tool to enumerate and fuzz the API endpoint for potential path’s that may exist within the API that we can leverage.
 
@@ -379,11 +388,11 @@ Anyway, it goes a little something like this:
 feroxbuster -u http://localhost:8888/identity/api/v2/ -w ./SecLists/Discovery/Web-Content/raft-medium-directories.txt -H Accept:application/json "Authorization: Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJoYWNrZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTY5NDQwMTEzMywiZXhwIjoxNjk1MDA1OTMzfQ.FRvnO_rOsqJExjLzQ7srBiOp3nHsYgqMf_dXZy3a7NMRY-46COnH7JOX9xbKmosFfQUjkPhzrfTqkY03ZuBGYSW3fADkQ_1TmaRyQJx4Yn9HOqvSpiF67HS0Ddn9z88z5ObWY8jqxiDYLReFwLZJ1OFUqaYGCjWyI17H-a5XI4JiCeHjGVwMHOIibQ_0AHqnpn9kjMmk87bYpIYE0DjLejtemrxe0CW7iJsPQ8Fq2syWaIjx-H3skPEjpGJ-JnVDf5OIiBFqXa8xXySp9oK1ljTYh-ob3ZgE4ehyAG4KwrNA3o4VHKJ99tgkqKhPP9EhQATeA9wBXygyzHiGUBfppA" -m GET DELETE --proxy http://localhost:8080
 ```
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2032.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2033.png)
 
 Another handy tool is the built-in Burp Suite BAPP extension for `HTTPHeaders` which in the HTTP History sends a HTTP `OPTIONS` request to request, analyze and return available HTTP request methods accepted by the endpoint which is another clue here:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2033.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2034.png)
 
 ## Mass Assignment - Flag 😈
 
@@ -391,25 +400,25 @@ Another handy tool is the built-in Burp Suite BAPP extension for `HTTPHeaders` w
 
 By default, cRAPI gifts us with $100 bucks to go nuts. I sent a test order and inspected the API request and response:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2034.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2035.png)
 
 Let’s initiate a random order return:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2035.png)
-
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2036.png)
-
-The `GET /workshop/api/shop/orders/all HTTP/1.1` now shows a different status for `?order_id=4` as `"status":"return pending"`:
 
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2037.png)
 
-If I inspect the specific order ID with a `GET` request, I see the status again:
+The `GET /workshop/api/shop/orders/all HTTP/1.1` now shows a different status for `?order_id=4` as `"status":"return pending"`:
 
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2038.png)
 
-Since I want to ********************************UPDATE******************************** the resource (going back to `CRUD OPERATIONS`) (`CREATE`, `READ`, `UPDATE`, `DELETE`), let’s see if a HTTP `PUT` method is accepted:
+If I inspect the specific order ID with a `GET` request, I see the status again:
 
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2039.png)
+
+Since I want to ********************************UPDATE******************************** the resource (going back to `CRUD OPERATIONS`) (`CREATE`, `READ`, `UPDATE`, `DELETE`), let’s see if a HTTP `PUT` method is accepted:
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2040.png)
 
 `200 OK` is our major clue here. Since the HTTP response headers from the server indicate `Content-Type`:`application/json` is accepted, let’s add a JSON body to this request:
 
@@ -420,7 +429,7 @@ Since I want to ********************************UPDATE**************************
 }
 ```
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2040.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2041.png)
 
 The server response (`400`) gives us the answer here:
 
@@ -428,11 +437,11 @@ The server response (`400`) gives us the answer here:
 {"message":"The value of 'status' has to be 'delivered','return pending' or 'returned'"}
 ```
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2041.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2042.png)
 
 I changed the order status from `delivered` to `return pending`, then to `returned` but get a `500 Internal Server Error` and purely believe this to be related to my Docker environment as I noticed the `api-gateway`and `mongo:4.4` containers were regularly failing randomly:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2042.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2043.png)
 
 ### Challenge 9 - Increase your balance by $1,000 or more
 
@@ -440,29 +449,29 @@ The next challenge was one of my initial thoughts when exploiting challenge 8. W
 
 Let’s try buying 1000 wheels! `10 x 1000 = 10000` Inspect and send the `POST` request to the Burp Repeater to manipulate the quantity: (welp)
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2043.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2044.png)
 
 Checkout the available headers again when looking at the `GET` request for the order:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2044.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2045.png)
 
 Easy as 🥧
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2045.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2046.png)
 
 ### Challenge 10 - Update internal video properties
 
 Let’s go back to the original request “`/identity/api/v2/user/videos HTTP/1.1`". As long as we get the path correct, the web application is allowing `PUT` request’s with what looks like inadequate sanitization.
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2046.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2047.png)
 
 Our latest video upload shows a valid ID of `34`:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2047.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2048.png)
 
 Here, we can see a successful `PUT` request has updated the resouce:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2048.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2049.png)
 
 ## SSRF - Flag 😈
 
@@ -472,19 +481,19 @@ From my experience, locating SSRF attack vectors can be difficult unless it’s 
 
 I first checked my Target Scope in Burp Suite for `3xx` (open-redirects) but left me empty handed:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2049.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2050.png)
 
 Navigating through the UI, I decided to check out the `contact` feature and can see the API is making an internal request to the web app under the `mechanic_api` key:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2050.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2051.png)
 
 This flag is to use `google.com`, but for sake of my walkthrough I want to use my Burp Suite Collaborator URL instead: (this is working and accepted)
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2051.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2052.png)
 
 Verification from the collaborator:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2052.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2053.png)
 
 ## NoSQL Injection - Flag 😈
 
@@ -496,11 +505,11 @@ Verification from the collaborator:
 
 crAPI has a coupon validation endpoint at `POST /community/api/v2/coupon/validate-coupon HTTP/1.1`. Let’s edit the current request to a QueryString to test for NoSQL Injection using the NoSQLi bAPP extension:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2053.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2054.png)
 
 Our received response here shows that this endpoint is potentially vulnerable to NoSQLi:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2054.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2055.png)
 
 Performing some testing with noSQLi payloads, I verified this looks to be a backend MongoDB. As such, I amended my request to:
 
@@ -514,11 +523,11 @@ The `$ne` is a MongoDB Comparison Query Operator. The query must be sent within 
 
 **A**s such this query is sent and interpreted as… “verify the coupon code is not `ads_coupon_codeeezzzz` (which we know is unsuccessful from the `500` error and as such an implicit other available coupon) which yields successful:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2055.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2056.png)
 
 To be sure, I sent a request for the actual coupon legitimate value:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2056.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2057.png)
 
 ## SQL Injection - TODO
 
@@ -526,13 +535,19 @@ To be sure, I sent a request for the actual coupon legitimate value:
 
 If we try to again redeem the coupon code which we originally validated, we get an error:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2057.png)
-
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2058.png)
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2059.png)
 
 Now, let’s try performing some iSQL attacks against this `coupon_code` value, our aim is to trick the DB into thinking that redeemed coupon `TRAC075` has not been redeemed.
 
-——— **TODO: ———**
+Here, I opted to use `sqlmap` tool
+
+```markdown
+sqlmap-dev master % python3 sqlmap.py --url http://localhost:8888/workshop/api/shop/apply_coupon?coupon_code= --auth-type Basic --auth-cred hacker@example.com:HackingCrapi123! -v
+```
+
+——— **TODO———**
 
 ## Unauthenticated Access - Flag 😈
 
@@ -540,15 +555,15 @@ Now, let’s try performing some iSQL attacks against this `coupon_code` value, 
 
 AKA Broken Authentication, my first thought was to hunt for endpoints which may leak sensitive information such as PII. Therefore, from my experience with crAPI’s API, I started some hAPI path emulating user activity and started to observe the results:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2059.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2060.png)
 
 As a path of interest, this was interestingly and the first API endpoint that I tested, I sent to Burp Repeater and stripped the JWT token to remove any kind of bearer authentication. This was successful and the API endpoint is being leaked without a requirement for token authentication:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2060.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2061.png)
 
 This is also true only for the `GET` method as you can see when I tried to send a manipulated HTTP `PUT` request, emulating an order takeover:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2061.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2062.png)
 
 This vulnerability is not limited to one endpoint, this is just one example.
 
@@ -562,7 +577,7 @@ Instantly here, I pivot to using the good old JWT Tool
 jwt_tool master % python3 jwt_tool.py eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJoYWNrZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTY5NDQwMTEzMywiZXhwIjoxNjk1MDA1OTMzfQ.FRvnO_rOsqJExjLzQ7srBiOp3nHsYgqMf_dXZy3a7NMRY-46COnH7JOX9xbKmosFfQUjkPhzrfTqkY03ZuBGYSW3fADkQ_1TmaRyQJx4Yn9HOqvSpiF67HS0Ddn9z88z5ObWY8jqxiDYLReFwLZJ1OFUqaYGCjWyI17H-a5XI4JiCeHjGVwMHOIibQ_0AHqnpn9kjMmk87bYpIYE0DjLejtemrxe0CW7iJsPQ8Fq2syWaIjx-H3skPEjpGJ-JnVDf5OIiBFqXa8xXySp9oK1ljTYh-ob3ZgE4ehyAG4KwrNA3o4VHKJ99tgkqKhPP9EhQATeA9wBXygyzHiGUBfppA
 ```
 
-Looking at my output, the “JOT” token associates a `role` with the bearer token (current value = “`user`”):
+Looking at my output, the “JOT” token associates a `role` (**private claim**) with the bearer token (current value = “`user`”):
 
 ```markdown
 Token payload values:
@@ -573,7 +588,7 @@ Token payload values:
 
 ```
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2062.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2063.png)
 
 Using the `-T` parameter, let’s tamper with the values:
 
@@ -581,7 +596,7 @@ Using the `-T` parameter, let’s tamper with the values:
 jwt_tool master % python3 jwt_tool.py -T eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJoYWNrZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoidXNlciIsImlhdCI6MTY5NDQwMTEzMywiZXhwIjoxNjk1MDA1OTMzfQ.FRvnO_rOsqJExjLzQ7srBiOp3nHsYgqMf_dXZy3a7NMRY-46COnH7JOX9xbKmosFfQUjkPhzrfTqkY03ZuBGYSW3fADkQ_1TmaRyQJx4Yn9HOqvSpiF67HS0Ddn9z88z5ObWY8jqxiDYLReFwLZJ1OFUqaYGCjWyI17H-a5XI4JiCeHjGVwMHOIibQ_0AHqnpn9kjMmk87bYpIYE0DjLejtemrxe0CW7iJsPQ8Fq2syWaIjx-H3skPEjpGJ-JnVDf5OIiBFqXa8xXySp9oK1ljTYh-ob3ZgE4ehyAG4KwrNA3o4VHKJ99tgkqKhPP9EhQATeA9wBXygyzHiGUBfppA
 ```
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2063.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2064.png)
 
 My new JWT token is:
 
@@ -589,13 +604,13 @@ My new JWT token is:
 eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJoYWNrZXJAZXhhbXBsZS5jb20iLCJyb2xlIjoiYWRtaW4iLCJpYXQiOjE2OTQ0MDExMzMsImV4cCI6MTY5NTAwNTkzM30.FRvnO_rOsqJExjLzQ7srBiOp3nHsYgqMf_dXZy3a7NMRY-46COnH7JOX9xbKmosFfQUjkPhzrfTqkY03ZuBGYSW3fADkQ_1TmaRyQJx4Yn9HOqvSpiF67HS0Ddn9z88z5ObWY8jqxiDYLReFwLZJ1OFUqaYGCjWyI17H-a5XI4JiCeHjGVwMHOIibQ_0AHqnpn9kjMmk87bYpIYE0DjLejtemrxe0CW7iJsPQ8Fq2syWaIjx-H3skPEjpGJ-JnVDf5OIiBFqXa8xXySp9oK1ljTYh-ob3ZgE4ehyAG4KwrNA3o4VHKJ99tgkqKhPP9EhQATeA9wBXygyzHiGUBfppA
 ```
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2064.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2065.png)
 
 Now we want to try and find an API endpoint which returns the “`role: <user`" etc. Let’s try the dashboard homepage `GET /identity/api/v2/user/dashboard HTTP/1.1`:
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2065.png)
-
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2066.png)
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2067.png)
 
 No 🎲, maybe we need to look at hitting another `admin`-esq endpoint. 
 
@@ -605,9 +620,9 @@ Interesting, our crawl audit of cRAPI has shown API endpoint `GET /.well-known/j
 { "keys": [ { "kty": "RSA", "e": "AQAB", "use": "sig", "kid": "MKMZkDenUfuDF2byYowDj7tW5Ox6XG4Y1THTEGScRg8", "alg": "RS256", "n": "sZKrGYja9S7BkO-waOcupoGY6BQjixJkg1Uitt278NbiCSnBRw5_cmfuWFFFPgRxabBZBJwJAujnQrlgTLXnRRItM9SRO884cEXn-s4Uc8qwk6pev63qb8no6aCVY0dFpthEGtOP-3KIJ2kx2i5HNzm8d7fG3ZswZrttDVbSSTy8UjPTOr4xVw1Yyh_GzGK9i_RYBWHftDsVfKrHcgGn1F_T6W0cgcnh4KFmbyOQ7dUy8Uc6Gu8JHeHJVt2vGcn50EDtUy2YN-UnZPjCSC7vYOfd5teUR_Bf4jg8GN6UnLbr_Et8HUnz9RFBLkPIf0NiY6iRjp9ooSDkml2OGql3ww" } ] }
 ```
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2067.png)
-
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2068.png)
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2069.png)
 
 "The JSON Web Key Set (JWKS) is a set of keys containing the public keys used to verify any JSON Web Token (JWT) issued by the Authorization Server and signed using the RS256 **[signing algorithm](https://auth0.com/docs/get-started/applications/signing-algorithms)**.”
 
@@ -640,6 +655,12 @@ jwt_tool master % cat ./crapi-jwksfile.txt
 }
 ```
 
+A very talented and incredibly phenomenal [mentor](https://danaepp.com/how-to-find-access-control-issues-in-apis) of mine curated [this fantastic (one of many) article](https://danaepp.com/how-to-use-azure-to-crack-api-auth-tokens) which really helped me go to the next level and achieve this flag!
+
+Ultimately, we need to crack the existing JSON Web Token (JWT) captured from API traffic to recover the signing key to then forge our own valid token, which is what we are missing here.
+
+My next move was to pivot to open-source Hashcat with a fresh untampered JWT which can cracking JWT’s signed with HS256, HS384, or HS512 algorithms:
+
 ——— **TODO———**
 
 ## << 2 secret challenges >> - 50% TODO
@@ -648,22 +669,22 @@ jwt_tool master % cat ./crapi-jwksfile.txt
 
 One strange thing I noticed during hAPI path from the `HTTP Headers` bAPP extension is that `/workshop/api/shop/products HTTP/1.1` endpoint allows the `POST` method. Let’s try abuse this!
 
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2069.png)
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2070.png)
 
 This seems to show that the application is allowing input for addition of products but requires a slightly different data format:
-
-![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2070.png)
 
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2071.png)
 
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2072.png)
 
-We could cause a bit more havoc here for fun with the Intruder:
-
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2073.png)
+
+We could cause a bit more havoc here for fun with the Intruder:
 
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2074.png)
 
 ![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2075.png)
+
+![Untitled](crAPI%20Web%20Application%20Walkthrough%20Ads%20Dawson%20Septe%2093d47975bde547a7a4048bbd2e72531d/Untitled%2076.png)
 
 1. ——— **TODO———**
