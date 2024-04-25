@@ -1,0 +1,1 @@
+see published walkthrough via a fork [here](https://github.com/GangGreenTemperTatum/Damn-Vulnerable-RESTaurant-API-Game/blob/main/walkthrough/Damn-Vulnerable-RESTaurant-API-Game%20CTF%20Web%20Applic%20f4cc903ddcbf49cb93a7ebe710af7837.md) and related [PR](https://github.com/theowni/Damn-Vulnerable-RESTaurant-API-Game/pull/14)
