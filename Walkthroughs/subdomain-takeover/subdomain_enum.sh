@@ -11,6 +11,15 @@
 ### Ensure 'chmod 777' is set on the domains and subdomains text files
 ### Ensure `chmod +x` is set on this script
 
+# Define the timestamp variable
+TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
+
+# Define the log file
+LOG_FILE="${TIMESTAMP}-subdomain_enum-script.log"
+
+# Redirect stdout and stderr to the log file and the terminal
+exec > >(tee -a "$LOG_FILE") 2>&1
+
 set -eo pipefail
 
 BOLD_WHITE='\033[1;37m'
@@ -63,19 +72,18 @@ function print_and_execute() {
   "$@"
 }
 
-## Infinite loop for asset discovery
+## Infinite loop for asset discovery and subdomain enumeration
 
-while true; # infinite loop
+while true; do # infinite loop
     echo -e "$(date +"%Y-%m-%d %H:%M:%S") ${BOLD_WHITE}Scanning domains with subfinder...\n${RESET}"
-    TIMESTAMP=$(date +"%Y-%m-%d_%H-%M-%S")
     check_file_exists "$NOTIFY_CONFIG"
-    do subfinder -silent -dL domains.txt -all -o "archive/subdomains-${TIMESTAMP}.txt" | anew "${TIMESTAMP}.txt" | tee -a "archive/diff-${TIMESTAMP}.txt" | notify -bulk -id assetdiscoveryslack -pc "$NOTIFY_CONFIG" ;
+    subfinder -silent -dL domains.txt -all -o "archive/subdomains-${TIMESTAMP}.txt" | anew "${TIMESTAMP}.txt" | tee -a "archive/diff-${TIMESTAMP}.txt" | notify -bulk -id assetdiscoveryslack -pc "$NOTIFY_CONFIG"
     echo -e "$(date +"%Y-%m-%d %H:%M:%S") ${GREEN}Any diffs identified with anew have been stored in archive/${TIMESTAMP}.txt\n${RESET}"
     #sleep 3600 # 1 hour prevents the infinite loop from running every second
     # alternatively, set the script to run every hour on a cronjob
     echo -e "$(date +"%Y-%m-%d %H:%M:%S") ${GREEN}Completed subfinder scan\n${RESET}"
     echo -e "$(date +"%Y-%m-%d %H:%M:%S") ${BOLD_WHITE}Instatiating httpx...\n\n\n${RESET}"
-    do httpx -silent -l "archive/diff-${TIMESTAMP}.txt" -o "archive/httpx-findings-${TIMESTAMP}.txt" -sc -cl -ct -rt -probe -fr -fc 200,301,302,307 | notify -bulk -id httpxresultsslack -pc "$NOTIFY_CONFIG" ;
-    echo -e "$(date +"%Y-%m-%d %H:%M:%S") ${GREEN}httpx results sent via Slack and stored in "archive/httpx-findings-${TIMESTAMP}.txt"...\n${RESET}"
+    httpx -silent -l "archive/diff-${TIMESTAMP}.txt" -o "archive/httpx-findings-${TIMESTAMP}.txt" -sc -cl -ct -rt -probe -fr -fc 200,301,302,307 | notify -bulk -id httpxresultsslack -pc "$NOTIFY_CONFIG"
+    echo -e "$(date +"%Y-%m-%d %H:%M:%S") ${GREEN}httpx results sent via Slack and stored in archive/httpx-findings-${TIMESTAMP}.txt...\n${RESET}"
     break # remove this line to run the infinite loop
 done
